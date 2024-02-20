@@ -723,23 +723,23 @@ class BandModel:
         H_k[11+11+22,11+11+22] = H_k[11+11+22,11+11+22] - (1.0/2.0)*self.m.lambda_X2_down  
         # even-odd spin mixing
         # layer up
-        H_k[1,7+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up
-        H_k[2,8+22]  = self.m.lambda_M_up
+        H_k[1,7+22]  = self.m.lambda_M_up                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_up 
+        H_k[2,8+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up  # fixed typo: self.m.lambda_M_up
         H_k[4,10+22] = self.m.lambda_X2_up/np.sqrt(2.0)
         H_k[5,11+22] = self.m.lambda_X2_up/np.sqrt(2.0)
-        H_k[7,2+22]  = self.m.lambda_M_up
-        H_k[8,3+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up
+        H_k[7,2+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up  # fixed typo: self.m.lambda_M_up
+        H_k[8,3+22]  = self.m.lambda_M_up                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_up
         H_k[9,5+22]  = self.m.lambda_X2_up/np.sqrt(2.0)
         H_k[10,6+22] = self.m.lambda_X2_up/np.sqrt(2.0)
         # layer down; AB stacking
-        H_k[2+11,7+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down
-        H_k[3+11,8+22+11]  = self.m.lambda_M_down
+        H_k[2+11,7+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
+        H_k[3+11,8+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
         H_k[4+11,10+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
         H_k[5+11,11+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
-        H_k[7+11,1+22+11]  = self.m.lambda_M_down
-        H_k[8+11,2+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down
+        H_k[7+11,1+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
+        H_k[8+11,2+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
         H_k[9+11,5+22+11]  = self.m.lambda_X2_down/np.sqrt(2.0)
-        H_k[10+11,6+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)  
+        H_k[10+11,6+22+11] = self.m.lambda_X2_down/np.sqrt(2.0) 
         """
         # zero odd
         H_k[7,7]               = 0.
@@ -777,7 +777,7 @@ class BandModel:
             for i in range(1,dim4+1):
                 H_k[i+d4j,i+d4j] += Vm*(-1)**j
             H_k[4+d4j,9+d4j] += (Vt-Vb)/2.
-            H_k[5+d4j,10+d4j] += (Vb-Vt)/2.
+            H_k[5+d4j,10+d4j] += (Vt-Vb)/2.  # fixed!
             H_k[6+d4j,11+d4j] += (Vt-Vb)/2.  
         #    
         H_kk = H_k[1:,1:]
