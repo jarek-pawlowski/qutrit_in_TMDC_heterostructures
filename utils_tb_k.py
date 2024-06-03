@@ -1595,7 +1595,7 @@ class PlottingFourier:
         plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
         plt.close()
         
-    def plot_dressed_elements(self, basis_k, dressed_elements, suffix=None):  # dressed_elements is q,k indexed
+    def plot_dressed_elements(self, basis_k, dressed_elements, suffix=None, savetofile=None):  # dressed_elements is q,k indexed
         _, ax = plt.subplots()
         ax.axes.set_aspect('equal')
         ax.set_xlabel('$(k-q)_x$ (nm$^{-1}$)')
@@ -1605,7 +1605,9 @@ class PlottingFourier:
         value = np.sqrt(abs2(dressed_elements))*au.Eh*au.Ah*au.Ah
         value += 1.e-10
         kx = basis_k[:,0]
-        ky = basis_k[:,1]        
+        ky = basis_k[:,1]
+        if savetofile is not None:
+            np.savetxt('./results/'+savetofile, np.c_[kx,ky, value])        
         elements = ax.scatter(x=kx/au.Ah, y=ky/au.Ah, 
                               c=value, s=self.pointsize, cmap='viridis', norm=colors.LogNorm(vmin=1.e-10, vmax=1.e1))  # norm=colors.LogNorm(vmin=1.e-15)
         cbar = plt.colorbar(elements)
