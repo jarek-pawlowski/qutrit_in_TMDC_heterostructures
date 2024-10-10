@@ -1077,15 +1077,15 @@ class FlakeMethods:
                     expAB_Ku = np.matmul(np.multiply(exp_k[0:k1], eigenvectors[0:k1,i]), self.basis_k.basis_amplitudes[0:k1])
                     expAB_Kd = np.matmul(np.multiply(exp_k[k1:k2+1], eigenvectors[k1:k2+1,i]), self.basis_k.basis_amplitudes[k1:k2+1])
                     if type == 1:
-                        SKuu = np.sum(expAB_Ku[np.r_[0:3]])
-                        SKud = np.sum(expAB_Kd[np.r_[0:3]])
-                        SKdu = np.sum(expAB_Ku[np.r_[3:6]])
-                        SKdd = np.sum(expAB_Kd[np.r_[3:6]])
+                        SKuu = np.sum(expAB_Ku[np.r_[0:22]])
+                        SKud = np.sum(expAB_Kd[np.r_[0:22]])
+                        SKdu = np.sum(expAB_Ku[np.r_[22:44]])
+                        SKdd = np.sum(expAB_Kd[np.r_[22:44]])
                     else:
-                        SKuu = np.sum(expAB_Ku[np.r_[0:3]])
-                        SKud = np.sum(expAB_Kd[np.r_[0:3]])
-                        SKdu = np.sum(expAB_Ku[np.r_[3:6]])
-                        SKdd = np.sum(expAB_Kd[np.r_[3:6]])
+                        SKuu = np.sum(expAB_Ku[np.r_[0:22]])
+                        SKud = np.sum(expAB_Kd[np.r_[0:22]])
+                        SKdu = np.sum(expAB_Ku[np.r_[22:44]])
+                        SKdd = np.sum(expAB_Kd[np.r_[22:44]])
                     densities[i,j] = abs2(SKuu)+abs2(SKud)+abs2(SKdu)+abs2(SKdd)
                     #densities[i,j] = abs2(SKuu+SKud+SKdu+SKdd)  # equivalent to abs2(z) from below
                     S += abs2(SKuu)+abs2(SKud)-abs2(SKdu)-abs2(SKdd)
@@ -1367,7 +1367,7 @@ class PlottingBands:
             colors = dot_occupation
         else:
             colors = 'tab:blue'
-        ax.scatter(x=np.arange(1, eigenvalues.size+1), y=eigenvalues*au.Eh, s=5., c=colors)
+        ax.scatter(x=np.arange(1, eigenvalues.size+1), y=eigenvalues, s=5., c=colors)
         plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
         plt.close()
 
@@ -1378,14 +1378,14 @@ class PlottingBands:
         dpi=400
         fig, ax = plt.subplots(figsize=(fx,fy), dpi=dpi)
         ax.set_xlabel("subsequent eigenstates")
-        ax.set_ylabel("energy (meV)")        
-        y=eigenvalues*au.Eh
+        ax.set_ylabel("energy (eV)")        
+        y=eigenvalues
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.5
         x=np.arange(1, eigenvalues.size+1)
         sv = ax.scatter(x=np.arange(1, eigenvalues.size+1), y=y+dy, 
                         s=pointsize, c=spin_valley[:,0], cmap='coolwarm', vmin=-1.05, vmax=1.05)
-        sv = ax.scatter(x=np.arange(1, eigenvalues.size+1), y=y-dy, 
-                        s=pointsize, c=spin_valley[:,1], cmap='coolwarm', vmin=-1.05, vmax=1.05)
+        # sv = ax.scatter(x=np.arange(1, eigenvalues.size+1), y=y-dy, 
+        #                 s=pointsize, c=spin_valley[:,1], cmap='coolwarm', vmin=-1.05, vmax=1.05)
         fig.colorbar(sv, ax=ax, ticks=[-1,-.5,0,.5,1])
         plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
         plt.close()
@@ -1397,9 +1397,9 @@ class PlottingBands:
         dpi=400
         fig, ax = plt.subplots(figsize=(fx,fy), dpi=dpi)
         ax.set_xlabel('$k_x$ (nm$^{-1}$)')
-        ax.set_ylabel("energy (meV)")   
+        ax.set_ylabel("energy (eV)")   
         #ax.set_ylim([-79,-5])     
-        y=eigenvalues*au.Eh
+        y=eigenvalues
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.7
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
@@ -1421,9 +1421,9 @@ class PlottingBands:
         dpi=400
         fig, ax = plt.subplots(figsize=(fx,fy), dpi=dpi)
         ax.set_xlabel('$k_y$ (nm$^{-1}$)')
-        ax.set_ylabel("energy (meV)")   
+        ax.set_ylabel("energy (eV)")   
         #ax.set_ylim([-79,-5])     
-        y=eigenvalues*au.Eh
+        y=eigenvalues
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.5
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
@@ -1444,9 +1444,9 @@ class PlottingBands:
         dpi=400
         fig, ax = plt.subplots(figsize=(fx,fy), dpi=dpi)
         ax.set_xlabel('$k_x$ (nm$^{-1}$)')
-        ax.set_ylabel("energy (meV)")   
+        ax.set_ylabel("energy (eV)")   
         ax.set_ylim([-79,-5])     
-        y=eigenvalues*au.Eh
+        y=eigenvalues
         ax.plot([self.flake.K_points[0][0]/au.Ah,self.flake.K_points[0][0]/au.Ah], [-80,0], '--', c='black', zorder=1)
         ax.plot([self.flake.K_points[1][0]/au.Ah,self.flake.K_points[1][0]/au.Ah], [-80,0], '--', c='black', zorder=1)
         sv = ax.scatter(x=k_max[:,0]/au.Ah, y=y, 
