@@ -4,7 +4,7 @@ import utils_tb
 import utils_tb_k as utils
 
 
-lattice_const = 3.323
+lattice_const = 0.3323  # now in nm
 # --- Slater-Koster layers parameters
 # layer up: MoSe2
 Ed_up          = -0.09
@@ -62,9 +62,10 @@ parameters = np.array([-5.958861367832076E-002, -5.07768325945268, -5.4398544552
 #material.update_parameters(*parameters)
 material.set_parameters(*parameters)
 material.set_efield(1000.)  # in mV/nm
+#material.set_efield(1.)  # in mV/nm
 
 # define flake    
-flake_edge_size = [63,63]  # [800,800] 
+flake_edge_size = [102,102]  # [800,800] 
 flake = utils.Flake(material.a0, material.d0, flake_edge_size, shape='rhombus', find_neighbours=False)
 flake.set_bfield(0.)  # in teslas
 
@@ -77,8 +78,9 @@ flake.create_reciprocal_lattice()
 # build flake model and construct k-space Hamiltonian
 print("constructing plane-wave basis...")
 basis_k = utils.Planewaves(flake, model)
-#basis_k.select_subspace(flake.K_points, 24.)  # 14.
-basis_k.select_subspace_half()
+#basis_k.select_subspace(flake.K_points, 1.5)
+basis_k.select_subspace(flake.Q_points, 2.5)  # 14.
+#basis_k.select_subspace_half()
 plot_flake.plot_flake_lattice_k(subsets=basis_k.subspaces)
 
 # setup confinement potential
@@ -93,7 +95,8 @@ for i, n in enumerate(flake.nodes):
     #flake.potential[i] = (np.exp(-r**2/(.15/utils.au.Ah)**2/2.)-1.)*300./utils.au.Eh  # type-II barrier amplitude
     #flake.potential[i] += np.exp(-d**2/(3./utils.au.Ah)**2/2.)*1./utils.au.Eh
     #flake.potential[i] -= (np.exp(-((x-6.8/utils.au.Ah)**2+(y+4.6/utils.au.Ah)**2)/(5./utils.au.Ah)**2/2.)-1.)*250./utils.au.Eh
-    flake.potential[i] = (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*250./utils.au.Eh
+    #flake.potential[i] = (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*250./utils.au.Eh
+    flake.potential[i] = (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*0./utils.au.Eh
 
 # Q1'-Q3 coupling:
 # angle = -np.pi/6.
@@ -113,12 +116,13 @@ plot_bands = utils.PlottingBands(flake, directory='results')
 plot_bands.plot_Ek(basis_k.solve_BZ_path())
 plot_bands.plot_energy_surface_k(subsets=basis_k.subspaces, energy=basis_k.basis_energies[1::2])
 plot_bands.plot_spin_surface_k(subsets=basis_k.subspaces, spin=basis_k.basis_spins[1::2])
-basis_k.potential_elements(sign=1)
+basis_k.potential_elements(sign=-1)
 
 flake_solver = utils.FlakeMethods(flake, material, basis_k=basis_k)
 plot_kq = utils.PlottingFourier(flake_solver, directory='results')
 plot_kq.plot_elements_kmq(basis_k.elements_kmq, l_index=0)
 
+"""
 # build Hamiltonian in plane-waves basis
 print("Calculating coupling elements...")
 dressed_elements = basis_k.build_hamiltonian(include_diagonal=False)
@@ -127,6 +131,7 @@ plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[0], suffix='0', s
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[1], suffix='1')
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[2], suffix='2')
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[3], suffix='3')
+"""
 
 # build Hamiltonian in plane-waves basis
 print("building Hamiltonian...")
@@ -141,20 +146,20 @@ eigenvalues, eigenvectors = es.solve_eigenproblem_arpack_dense(hamiltonian,
                                 reverse = False,
                                 calculate_eigenvectors = True)
 
-print(eigenvalues*utils.au.Eh)
+print(eigenvalues)
 plot_bands.plot_eigenvalues(eigenvalues)
 np.save('./results/eigenvalues', eigenvalues, allow_pickle=True)
 
 # evaluate results
-laststates = 20 
+firststates = 20 
 flake_solver = utils.FlakeMethods(flake, material, basis_k=basis_k)
-densities, spin_valley, k_max, std_y, states = flake_solver.calculate_densities_k(eigenvectors[:,-laststates:],
+densities, spin_valley, k_max, std_y, states = flake_solver.calculate_densities_k(eigenvectors[:,:firststates],
                                                                                   calculate_spin_valley=True, 
                                                                                   calculate_real_states=True, 
                                                                                   every_n=1)
-plot_bands.plot_eigenvalues_sv(eigenvalues[-laststates:], spin_valley, pointsize=20.)
-plot_bands.plot_eigenvalues_svk(eigenvalues[-laststates:], spin_valley, k_max, pointsize=20.)
-plot_bands.plot_eigenvalues_svk_(eigenvalues[-laststates:], spin_valley, k_max, pointsize=20.)
-plot_bands.plot_eigenvalues_bnk(eigenvalues[-laststates:], std_y, k_max, pointsize=20.)
-plot_flake.plot_statedensity(densities[laststates-1])
+plot_bands.plot_eigenvalues_sv(eigenvalues[:firststates], spin_valley, pointsize=20.)
+plot_bands.plot_eigenvalues_svk(eigenvalues[:firststates], spin_valley, k_max, pointsize=20.)
+plot_bands.plot_eigenvalues_svk_(eigenvalues[:firststates], spin_valley, k_max, pointsize=20.)
+plot_bands.plot_eigenvalues_bnk(eigenvalues[:firststates], std_y, k_max, pointsize=20.)
+plot_flake.plot_statedensity(densities[0])
 flake_solver.save_densities()

@@ -1403,9 +1403,9 @@ class PlottingBands:
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.7
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
-        sv = ax.scatter(x=k_max[:,1]/au.Ah, y=y+dy, 
+        sv = ax.scatter(x=k_max[:,0]/au.Ah, y=y+dy, 
                         s=pointsize, c=spin_valley[:,0], cmap='coolwarm', vmin=-1.05, vmax=1.05, zorder=2)
-        sv = ax.scatter(x=k_max[:,1]/au.Ah, y=y-dy, 
+        sv = ax.scatter(x=k_max[:,0]/au.Ah, y=y-dy, 
                         s=pointsize, c=spin_valley[:,1], cmap='coolwarm', vmin=-1.05, vmax=1.05, zorder=1)
         axins = inset_axes(ax, width = "3%", height = "100%", loc = 'lower left',
                    bbox_to_anchor = (1.02, 0., 1, 1), bbox_transform = ax.transAxes,
@@ -1427,7 +1427,7 @@ class PlottingBands:
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.5
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
-        sv = ax.scatter(x=k_max[:,1]/au.Ah, y=y, 
+        sv = ax.scatter(x=k_max[:,0]/au.Ah, y=y, 
                         s=pointsize, c=spin_valley[:,0], cmap='coolwarm', vmin=-1.05, vmax=1.05, zorder=1)
         axins = inset_axes(ax, width = "3%", height = "100%", loc = 'lower left',
                    bbox_to_anchor = (1.02, 0., 1, 1), bbox_transform = ax.transAxes,
@@ -1435,7 +1435,7 @@ class PlottingBands:
         fig.colorbar(sv, cax=axins, ticks=[-1,-.5,0,.5,1])
         plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
         plt.close()
-        np.savetxt('./results/eigvals_k.txt', np.c_[k_max[:,1]/au.Ah, y, spin_valley[:,0]])
+        np.savetxt('./results/eigvals_k.txt', np.c_[k_max[:,0]/au.Ah, y, spin_valley[:,0]])
 
     def plot_eigenvalues_bnk(self, eigenvalues, std_y, k_max, filename='eigenvalues_bnk.png', pointsize=20.):
         #        

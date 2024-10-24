@@ -148,7 +148,7 @@ class Newmaterial:
                  Ed_down,Ep1_down,Ep0_down,Vdp_sigma_down,Vdp_pi_down,Vdd_sigma_down,Vdd_pi_down,Vdd_delta_down,Vpp_sigma_down,Vpp_pi_down,Ep1_odd_down,Ep0_odd_down,Ed_odd_down,lambda_M_down,lambda_X2_down,
                  Vpp_sigma_inter,Vpp_pi_inter,Vdd_sigma_inter,Vdd_pi_inter,Vdd_delta_inter,offset):
         self.dim = 44
-        self.lattice_const = lattice_const
+        self.lattice_const = lattice_const/au.Ah
         self.a0 = self.lattice_const
         self.d0 = 0.64/au.Ah
         self.d1 = 0.16/au.Ah
@@ -368,7 +368,7 @@ class BandModel:
         self.hoppingsMM = [h*self.m.a0/np.sqrt(3.) for h in self.l.hoppingsMM]
         self.hoppingsMX = [h*self.m.a0/np.sqrt(3.) for h in self.l.hoppingsMX]
         if self.l.BZ_loaded_externally:
-            self.BZ_path = self.l.BZ_path
+            self.BZ_path = self.l.BZ_path*au.Ah*10.
         else:
             self.BZ_path = self.l.BZ_path/self.m.a0
         self.critical_points = [(p[0], p[1]/self.m.a0) for p in self.l.critical_points]
@@ -513,16 +513,19 @@ class BandModel:
 
     def build_tb_hamiltonian_new(self, kx, ky):
         # Geometry Parameters (lattice constanst for MoSe2) -------
-        d1            = self.m.lattice_const/np.sqrt(3.0) 
+        lattice_const_in_A = self.m.lattice_const*au.Ah*10.
+        kx /= au.Ah*10.
+        ky /= au.Ah*10.
+        d1            = lattice_const_in_A/np.sqrt(3.0)
         d2_up         = 1.669
         d2_down       = 1.680
         d_up          = np.sqrt(d1**2.0+d2_up**2.0) 
         d_down        = np.sqrt(d1**2.0+d2_down**2.0) 
         layer_dist    = 6.4 
         dz_pp         = layer_dist - d2_up - d2_down
-        d_pp          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_pp**2.0) ) 
+        d_pp          = np.sqrt( (lattice_const_in_A**2.0 / 3.0) + (dz_pp**2.0) ) 
         dz_dd         = layer_dist
-        d_dd          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_dd**2.0) ) 
+        d_dd          = np.sqrt( (lattice_const_in_A**2.0 / 3.0) + (dz_dd**2.0) ) 
         R1x_pp        = -d1/2.0 
         R1y_pp        = d1*np.sqrt(3.0)/2.0 
         R2x_pp        = -d1/2.0  
