@@ -62,6 +62,7 @@ class AtomicUnits:
     """
     # atomic units
     Eh=27211.4 # meV
+    Ehh=Eh/1000. # eV
     Ah=0.05292 # nm
     Th=2.41888e-5 # ps
     Bh=235051.76 # Teslas
@@ -1064,8 +1065,9 @@ class FlakeMethods:
         if calculate_real_states:
             states = np.zeros((no_of_eigenstates, self.flake.no_of_nodes*self.m.dim), dtype=np.complex128)   
         #
-        k1 = self.basis_k.subspaces[0].shape[0]*dim_r  # K-valley range
-        k2 = k1 + self.basis_k.subspaces[1].shape[0]*dim_r  # K'-valley range
+        # fast fix to have spin values reasonable:
+        k1 = 0  #k1 = self.basis_k.subspaces[0].shape[0]*dim_r  # K-valley range
+        k2 = len(eigenvectors[:,0])  #k2 = k1 + self.basis_k.subspaces[1].shape[0]*dim_r  # K'-valley range
         for i in range(no_of_eigenstates):
             j = 0
             jj= 0
@@ -1379,7 +1381,7 @@ class PlottingBands:
         fig, ax = plt.subplots(figsize=(fx,fy), dpi=dpi)
         ax.set_xlabel("subsequent eigenstates")
         ax.set_ylabel("energy (eV)")        
-        y=eigenvalues
+        y=eigenvalues*au.Ehh
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.5
         x=np.arange(1, eigenvalues.size+1)
         sv = ax.scatter(x=np.arange(1, eigenvalues.size+1), y=y+dy, 
@@ -1399,7 +1401,7 @@ class PlottingBands:
         ax.set_xlabel('$k_x$ (nm$^{-1}$)')
         ax.set_ylabel("energy (eV)")   
         #ax.set_ylim([-79,-5])     
-        y=eigenvalues
+        y=eigenvalues*au.Ehh
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.7
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
@@ -1423,7 +1425,7 @@ class PlottingBands:
         ax.set_xlabel('$k_y$ (nm$^{-1}$)')
         ax.set_ylabel("energy (eV)")   
         #ax.set_ylim([-79,-5])     
-        y=eigenvalues
+        y=eigenvalues*au.Ehh
         dy=np.sqrt(pointsize)*dpi/72.*(np.amax(y)-np.amin(y))/(fy*dpi)/1.5
         #ax.plot([self.flake.K_points[0][1]/au.Ah,self.flake.K_points[0][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
         #ax.plot([self.flake.K_points[1][1]/au.Ah,self.flake.K_points[1][1]/au.Ah], [-80,0], '--', c='black', zorder=1)
@@ -1446,7 +1448,7 @@ class PlottingBands:
         ax.set_xlabel('$k_x$ (nm$^{-1}$)')
         ax.set_ylabel("energy (eV)")   
         ax.set_ylim([-79,-5])     
-        y=eigenvalues
+        y=eigenvalues*au.Ehh
         ax.plot([self.flake.K_points[0][0]/au.Ah,self.flake.K_points[0][0]/au.Ah], [-80,0], '--', c='black', zorder=1)
         ax.plot([self.flake.K_points[1][0]/au.Ah,self.flake.K_points[1][0]/au.Ah], [-80,0], '--', c='black', zorder=1)
         sv = ax.scatter(x=k_max[:,0]/au.Ah, y=y, 
@@ -1466,8 +1468,8 @@ class PlottingBands:
         subset = np.concatenate(subsets)
         energysurface = ax.scatter(x=subset[:,0]/au.Ah, 
                         y=subset[:,1]/au.Ah, 
-                        c=energy,  # *au.Eh,
-                        s=self.pointsize/2., cmap='coolwarm')
+                        c=energy*au.Ehh,
+                        s=self.pointsize/2., cmap='coolwarm')  #, vmin=1.01, vmax=1.02)
         cbar = fig.colorbar(energysurface, ax=ax)
         cbar.set_label(r'energy (eV)')
         plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
@@ -1535,7 +1537,7 @@ class PlottingBands:
         k_path = np.linspace(0., 1., num=self.grid_k.shape[0])
         
         for band_idx in range(Ek.shape[1]):
-            ax.scatter(k_path, Ek[:,band_idx], s=pointsize, marker='.')
+            ax.scatter(k_path, Ek[:,band_idx]*au.Ehh, s=pointsize, marker='.')
 
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
