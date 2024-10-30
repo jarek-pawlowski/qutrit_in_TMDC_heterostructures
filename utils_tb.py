@@ -567,7 +567,6 @@ class BandModel:
         #
         H_k = np.zeros((self.m.dim+1, self.m.dim+1), dtype=np.complex128)
         # --- Constructing the Hamiltonian ---
-        # --- Constructing the Hamiltonian ---
         g0        =  4.0*np.cos(3.0/2.0*kx*d1)*np.cos(np.sqrt(3.0)/2.0*ky*d1) + 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
         g2        =  2.0*np.cos(3.0/2.0*kx*d1+np.sqrt(3.0)/2.0*ky*d1)*np.exp(1.j*np.pi/3.0) + 2.0*np.cos(3.0/2.0*kx*d1-np.sqrt(3.0)/2.0*ky*d1)*np.exp(-1.j*np.pi/3.0) - 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
         g4        =  2.0*np.cos(3.0/2.0*kx*d1+np.sqrt(3.0)/2.0*ky*d1)*np.exp(1.j*2.0*np.pi/3.0) + 2.0*np.cos(3.0/2.0*kx*d1-np.sqrt(3.0)/2.0*ky*d1)*np.exp(-1.j*2.0*np.pi/3.0) + 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
@@ -889,15 +888,388 @@ class BandModel:
         H_k[9,5+22]  = self.m.lambda_X2_up/np.sqrt(2.0)
         H_k[10,6+22] = self.m.lambda_X2_up/np.sqrt(2.0)
         # layer down; AB stacking
-        H_k[2+11,7+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
-        H_k[3+11,8+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
+        H_k[1+11,7+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
+        H_k[2+11,8+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
         H_k[4+11,10+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
         H_k[5+11,11+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
-        H_k[7+11,1+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
-        H_k[8+11,2+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
+        H_k[7+11,2+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down
+        H_k[8+11,3+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down
         H_k[9+11,5+22+11]  = self.m.lambda_X2_down/np.sqrt(2.0)
         H_k[10+11,6+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)  
 
+        # E-field
+        Vm = self.m.fel*self.m.d0/2.*au.Ehh  # self.m.fel is in Eh/aB, d0 in in aB => Vm is in eV
+        Vt = self.m.fel*(self.m.d0/2.+self.m.d2_up)*au.Ehh # MB change 27Oct2024
+        Vb = self.m.fel*(self.m.d0/2.-self.m.d2_up)*au.Ehh # MB change 27Oct2024
+        dim4 = int(self.m.dim/4)
+        for j in range(4):
+            d4j = dim4*j
+            for i in range(1,dim4+1):
+                H_k[i+d4j,i+d4j] += Vm*(-1)**j
+            H_k[4+d4j,9+d4j] += (Vt-Vb)/2.
+            H_k[5+d4j,10+d4j] += (Vt-Vb)/2.  # fixed!
+            H_k[6+d4j,11+d4j] += (Vt-Vb)/2.  
+        #    
+        H_kk = H_k[1:,1:]
+        H_kk += np.conjugate(np.triu(H_kk, k=1)).T
+        np.fill_diagonal(H_kk, H_kk.diagonal() + self.m.offset)
+        return H_kk/au.Ehh
+
+    def build_tb_hamiltonian_new_(self, kx, ky):
+        # Geometry Parameters (lattice constanst for MoSe2) -------
+        lattice_const_in_A = self.m.lattice_const*au.Ah*10.
+        kx /= au.Ah*10.
+        ky /= au.Ah*10.
+        d1            = lattice_const_in_A/np.sqrt(3.0)
+        d2_up         = self.m.d2_up * au.Ah*10.  # to be in A
+        d2_down       = self.m.d2_down * au.Ah*10.  # to be in A
+        d_up          = np.sqrt(d1**2.0+d2_up**2.0) 
+        d_down        = np.sqrt(d1**2.0+d2_down**2.0) 
+        layer_dist    = self.m.d0 * au.Ah*10.  # to be in A
+        dz_pp         = layer_dist - d2_up - d2_down
+        d_pp          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_pp**2.0) ) 
+        dz_dd         = layer_dist
+        d_dd          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_dd**2.0) ) 
+        dz_dp         = layer_dist - d2_down
+        dz_pd         = layer_dist - d2_up
+        R1x_pp        = -d1/2.0 
+        R1y_pp        = d1*np.sqrt(3.0)/2.0 
+        R2x_pp        = -d1/2.0  
+        R2y_pp        = -d1*np.sqrt(3.0)/2.0 
+        R3x_pp        = d1
+        R3y_pp        = 0.0 
+        R1x_dd        = d1/2.0 
+        R1y_dd        = d1*np.sqrt(3.0)/2.0 
+        R2x_dd        = d1/2.0  
+        R2y_dd        = -d1*np.sqrt(3.0)/2.0 
+        R3x_dd        = -d1
+        R3y_dd        = 0.0 
+        #
+        H_k = np.zeros((self.m.dim+1, self.m.dim+1), dtype=np.complex128)
+        # --- Constructing the Hamiltonian ---
+        g0        =  4.0*np.cos(3.0/2.0*kx*d1)*np.cos(np.sqrt(3.0)/2.0*ky*d1) + 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
+        g2        =  2.0*np.cos(3.0/2.0*kx*d1+np.sqrt(3.0)/2.0*ky*d1)*np.exp(1.j*np.pi/3.0) + 2.0*np.cos(3.0/2.0*kx*d1-np.sqrt(3.0)/2.0*ky*d1)*np.exp(-1.j*np.pi/3.0) - 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
+        g4        =  2.0*np.cos(3.0/2.0*kx*d1+np.sqrt(3.0)/2.0*ky*d1)*np.exp(1.j*2.0*np.pi/3.0) + 2.0*np.cos(3.0/2.0*kx*d1-np.sqrt(3.0)/2.0*ky*d1)*np.exp(-1.j*2.0*np.pi/3.0) + 2.0*np.cos(np.sqrt(3.0)*ky*d1) 
+        # for up (rotated) just apply kx -> -kx, ky -> -ky
+        f_m1_up   = np.exp(1.j*(-kx)*d1) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*(-ky)*d1/2.0)*np.exp(1.j*2.0*np.pi/3.0) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*(-ky)*d1/2.0)*np.exp(-1.j*2.0*np.pi/3.0) 
+        f_0_up    = np.exp(1.j*(-kx)*d1) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*(-ky)*d1/2.0)*np.exp(-1.j*2.0*np.pi/3.0) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*(-ky)*d1/2.0)*np.exp( 1.j*2.0*np.pi/3.0) 
+        f_p1_up   = np.exp(1.j*(-kx)*d1) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*(-ky)*d1/2.0) + np.exp(-1.j*(-kx)*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*(-ky)*d1/2.0)
+        # 
+        f_m1_down = np.exp(1.j*kx*d1) + np.exp(-1.j*kx*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*ky*d1/2.0)*np.exp(1.j*2.0*np.pi/3.0) + np.exp(-1.j*kx*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*ky*d1/2.0)*np.exp(-1.j*2.0*np.pi/3.0)  
+        f_0_down  = np.exp(1.j*kx*d1) + np.exp(-1.j*kx*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*ky*d1/2.0)*np.exp(-1.j*2.0*np.pi/3.0) + np.exp(-1.j*kx*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*ky*d1/2.0)*np.exp( 1.j*2.0*np.pi/3.0) 
+        f_p1_down = np.exp(1.j*kx*d1) + np.exp(-1.j*kx*d1/2.0)*np.exp(1.j*np.sqrt(3.0)*ky*d1/2.0) + np.exp(-1.j*kx*d1/2.0)*np.exp(-1.j*np.sqrt(3.0)*ky*d1/2.0) 
+        # layer up
+        V1_up  =  1.0/np.sqrt(2.0)*d1/d_up*( np.sqrt(3.0)/2.0*self.m.Vdp_sigma_up*((d2_up/d_up)**(2.0)-1) - self.m.Vdp_pi_up*((d2_up/d_up)**(2.0)+1) ) 
+        V2_up  =  0.5*( np.sqrt(3.0)*self.m.Vdp_sigma_up-2.0*self.m.Vdp_pi_up )*(d2_up/d_up)*(d1/d_up)**(2.0) 
+        V3_up  =  1.0/np.sqrt(2.0)*( np.sqrt(3.0)/2.0*self.m.Vdp_sigma_up-self.m.Vdp_pi_up)*(d1/d_up)**(3.0) 
+        V4_up  =  0.5*( (3.0*(d2_up/d_up)**(2.0)-1)*self.m.Vdp_sigma_up - (2.0*np.sqrt(3.0)*(d2_up/d_up)**(2.0))*self.m.Vdp_pi_up )*(d1/d_up) 
+        V5_up  =  1.0/np.sqrt(2.0)*(d2_up/d_up)*( (3.0*(d2_up/d_up)**(2.0)-1)*self.m.Vdp_sigma_up - (2.0*np.sqrt(3.0)*((d2_up/d_up)**(2.0)-1))*self.m.Vdp_pi_up ) 
+        V6_up  =  1.0/np.sqrt(2.0)*(d2_up/d_up)*( ((d1/d_up)**2.0)*(np.sqrt(3.0)*self.m.Vdp_sigma_up-2.0*self.m.Vdp_pi_up)+2.0*self.m.Vdp_pi_up ) 
+        V7_up  =  1.0/np.sqrt(2.0)*(d2_up*d1**2.0)/d_up**3.0 * ( np.sqrt(3.0)*self.m.Vdp_sigma_up- 2.0*self.m.Vdp_pi_up ) 
+        V8_up  =  d1/d_up * ( ((d2_up/d_up)**2.0)*(np.sqrt(3.0)*self.m.Vdp_sigma_up-2.0*self.m.Vdp_pi_up)+self.m.Vdp_pi_up ) 
+        W1_up  =  0.125*(3.0*self.m.Vdd_sigma_up+4*self.m.Vdd_pi_up+self.m.Vdd_delta_up) 
+        W2_up  =  0.25*(self.m.Vdd_sigma_up+3.0*self.m.Vdd_delta_up) 
+        W3_up  = -np.sqrt(3.0)/(4*np.sqrt(2.0))*(self.m.Vdd_sigma_up-self.m.Vdd_delta_up) 
+        W4_up  =  0.125*(3.0*self.m.Vdd_sigma_up-4*self.m.Vdd_pi_up+self.m.Vdd_delta_up) 
+        W5_up  =  0.5*(self.m.Vpp_sigma_up+self.m.Vpp_pi_up) 
+        W6_up  =  self.m.Vpp_pi_up 
+        W7_up  =  0.5*(self.m.Vpp_sigma_up-self.m.Vpp_pi_up) 
+        W8_up  =  0.5*(self.m.Vdd_pi_up + self.m.Vdd_delta_up) 
+        W9_up  =  0.5*(self.m.Vdd_pi_up - self.m.Vdd_delta_up) 
+        # layer down
+        V1_down  =  1.0/np.sqrt(2.0)*d1/d_down*( np.sqrt(3.0)/2.0*self.m.Vdp_sigma_down*((d2_down/d_down)**(2.0)-1) - self.m.Vdp_pi_down*((d2_down/d_down)**(2.0)+1) ) 
+        V2_down  =  0.5*( np.sqrt(3.0)*self.m.Vdp_sigma_down-2.0*self.m.Vdp_pi_down )*(d2_down/d_down)*(d1/d_down)**(2.0) 
+        V3_down  =  1.0/np.sqrt(2.0)*( np.sqrt(3.0)/2.0*self.m.Vdp_sigma_down-self.m.Vdp_pi_down)*(d1/d_down)**(3.0) 
+        V4_down  =  0.5*( (3.0*(d2_down/d_down)**(2.0)-1)*self.m.Vdp_sigma_down - (2.0*np.sqrt(3.0)*(d2_down/d_down)**(2.0))*self.m.Vdp_pi_down )*(d1/d_down) 
+        V5_down  =  1.0/np.sqrt(2.0)*(d2_down/d_down)*( (3.0*(d2_down/d_down)**(2.0)-1)*self.m.Vdp_sigma_down - (2.0*np.sqrt(3.0)*((d2_down/d_down)**(2.0)-1))*self.m.Vdp_pi_down ) 
+        V6_down  =  1.0/np.sqrt(2.0)*(d2_down/d_down)*( ((d1/d_down)**2.0)*(np.sqrt(3.0)*self.m.Vdp_sigma_down-2.0*self.m.Vdp_pi_down)+2.0*self.m.Vdp_pi_down ) 
+        V7_down  =  1.0/np.sqrt(2.0)*(d2_down*d1**2.0)/d_down**3.0 * ( np.sqrt(3.0)*self.m.Vdp_sigma_down- 2.0*self.m.Vdp_pi_down ) 
+        V8_down  =  d1/d_down * ( ((d2_down/d_down)**2.0)*(np.sqrt(3.0)*self.m.Vdp_sigma_down-2.0*self.m.Vdp_pi_down)+self.m.Vdp_pi_down ) 
+        W1_down  =  1.0/8*(3.0*self.m.Vdd_sigma_down+4*self.m.Vdd_pi_down+self.m.Vdd_delta_down) 
+        W2_down  =  1.0/4*(self.m.Vdd_sigma_down+3.0*self.m.Vdd_delta_down) 
+        W3_down  = -np.sqrt(3.0)/(4*np.sqrt(2.0))*(self.m.Vdd_sigma_down-self.m.Vdd_delta_down) 
+        W4_down  =  1.0/8*(3.0*self.m.Vdd_sigma_down-4*self.m.Vdd_pi_down+self.m.Vdd_delta_down) 
+        W5_down  =  0.5*(self.m.Vpp_sigma_down+self.m.Vpp_pi_down) 
+        W6_down  =  self.m.Vpp_pi_down 
+        W7_down  =  0.5*(self.m.Vpp_sigma_down-self.m.Vpp_pi_down) 
+        W8_down  =  0.5*(self.m.Vdd_pi_down + self.m.Vdd_delta_down) 
+        W9_down  =  0.5*(self.m.Vdd_pi_down - self.m.Vdd_delta_down) 
+        # interlayer interactions
+        W12    = ((dz_pp/d_pp)**2.0)*self.m.Vpp_sigma_inter + (1.0-(dz_pp/d_pp)**2.0)*self.m.Vpp_pi_inter 
+        W13    = self.m.Vdd_sigma_inter * (( 0.5*((d1/d_dd)**2.0) - ((dz_dd/d_dd)**2.0) )**2.0) + self.m.Vdd_pi_inter * ( 3.0*((dz_dd/d_dd)**2.0)*(1.0 - ((dz_dd/d_dd)**2.0)) ) + self.m.Vdd_delta_inter * ( 0.75 * (((dz_dd/d_dd)**2.0)**2.0) )
+        W14    = ((d1/d_dd)**2.0) * ( 0.75*self.m.Vdd_sigma_inter + 0.25*((dz_dd/d_dd)**2.0)*self.m.Vdd_delta_inter + 0.5*((dz_dd/d_dd)**2.0)*self.m.Vdd_pi_inter )
+        W15    = 2.0*((d1/d_dd)**2.0)*self.m.Vdd_pi_inter + ((dz_dd/d_dd)**2.0)*self.m.Vdd_delta_inter
+        W16    = (3.0/16.0)*((d1/d_dd)**4.0) * ( 3.0*self.m.Vdd_sigma_inter + self.m.Vdd_delta_inter - 4.0*self.m.Vdd_pi_inter )
+        h1_pp  = np.exp(1.j*kx*R1x_pp)*np.exp(1.j*ky*R1y_pp) + np.exp(1.j*kx*R2x_pp)*np.exp(1.j*ky*R2y_pp) + np.exp(1.j*kx*R3x_pp)*np.exp(1.j*ky*R3y_pp) 
+        h1_dd  = np.exp(1.j*kx*R1x_dd)*np.exp(1.j*ky*R1y_dd) + np.exp(1.j*kx*R2x_dd)*np.exp(1.j*ky*R2y_dd) + np.exp(1.j*kx*R3x_dd)*np.exp(1.j*ky*R3y_dd) 
+        h2_dd  = (-0.5)*np.exp(1.j*kx*R1x_dd)*np.exp(1.j*ky*R1y_dd) + (-0.5)*np.exp(1.j*kx*R2x_dd)*np.exp(1.j*ky*R2y_dd) + np.exp(1.j*kx*R3x_dd)*np.exp(1.j*ky*R3y_dd) 
+        h3_dd  = (1.0+2.j*np.sqrt(3.0)/3.0)*np.exp(1.j*kx*R1x_dd)*np.exp(1.j*ky*R1y_dd) + (1.0-2.j*np.sqrt(3.0)/3.0)*np.exp(1.j*kx*R2x_dd)*np.exp(1.j*ky*R2y_dd)
+        # diagonal part
+        H_k[1,1]   = self.m.Ed_up  + (W1_up*g0)
+        H_k[2,2]   = self.m.Ed_up  + (W2_up*g0)
+        H_k[3,3]   = self.m.Ed_up  + (W1_up*g0) 
+        H_k[4,4]   = self.m.Ep1_up + (W5_up*g0)
+        H_k[5,5]   = self.m.Ep0_up + (W6_up*g0)
+        H_k[6,6]   = self.m.Ep1_up + (W5_up*g0)
+        H_k[7,7]   = self.m.Ed_odd_up  + (W8_up*g0)
+        H_k[8,8]   = self.m.Ed_odd_up  + (W8_up*g0) 
+        H_k[9,9]   = self.m.Ep1_odd_up + (W5_up*g0) 
+        H_k[10,10] = self.m.Ep0_odd_up + (W6_up*g0)
+        H_k[11,11] = self.m.Ep1_odd_up + (W5_up*g0)
+        H_k[12,12] = self.m.Ed_down  + (W1_down*g0)
+        H_k[13,13] = self.m.Ed_down  + (W2_down*g0)
+        H_k[14,14] = self.m.Ed_down  + (W1_down*g0)
+        H_k[15,15] = self.m.Ep1_down + (W5_down*g0)
+        H_k[16,16] = self.m.Ep0_down + (W6_down*g0)
+        H_k[17,17] = self.m.Ep1_down + (W5_down*g0) 
+        H_k[18,18] = self.m.Ed_odd_down  + (W8_down*g0)
+        H_k[19,19] = self.m.Ed_odd_down  + (W8_down*g0)
+        H_k[20,20] = self.m.Ep1_odd_down + (W5_down*g0)
+        H_k[21,21] = self.m.Ep0_odd_down + (W6_down*g0)
+        H_k[22,22] = self.m.Ep1_odd_down + (W5_down*g0)
+        # off-diagonal part W-dependent
+        H_k[1,2]   =  W3_up*g2 
+        H_k[1,3]   =  W4_up*g4 
+        H_k[2,3]   =  W3_up*g2 
+        H_k[4,6]   = -W7_up*g2 
+        H_k[7,8]   = -W9_up*g2 
+        H_k[9,11]  = -W7_up*g2 
+        H_k[12,13] =  W3_down*g2 
+        H_k[12,14] =  W4_down*g4 
+        H_k[13,14] =  W3_down*g2 
+        H_k[15,17] = -W7_down*g2 
+        H_k[18,19] = -W9_down*g2 
+        H_k[20,22] = -W7_down*g2  
+        # off-diagonal part V-dependent
+        H_k[1,4]   =  V1_up*f_m1_up*(-1.) 
+        H_k[1,5]   = -V2_up*f_0_up 
+        H_k[1,6]   =  V3_up*f_p1_up*(-1.) 
+        H_k[2,4]   = -V4_up*f_0_up*(-1.)
+        H_k[2,5]   = -V5_up*f_p1_up 
+        H_k[2,6]   =  V4_up*f_m1_up*(-1.) 
+        H_k[3,4]   = -V3_up*f_p1_up*(-1.) 
+        H_k[3,5]   = -V2_up*f_m1_up 
+        H_k[3,6]   = -V1_up*f_0_up*(-1.) 
+        H_k[7,9]   = -V6_up*f_p1_up 
+        H_k[7,10]  = -V8_up*f_m1_up *(-1.)
+        H_k[7,11]  =  V7_up*f_0_up 
+        H_k[8,9]   =  V7_up*f_m1_up 
+        H_k[8,10]  =  V8_up*f_0_up*(-1.) 
+        H_k[8,11]  = -V6_up*f_p1_up 
+        # layer down: 
+        H_k[12,15] =  V1_down*f_m1_down
+        H_k[12,16] = -V2_down*f_0_down
+        H_k[12,17] =  V3_down*f_p1_down
+        H_k[13,15] = -V4_down*f_0_down
+        H_k[13,16] = -V5_down*f_p1_down 
+        H_k[13,17] =  V4_down*f_m1_down
+        H_k[14,15] = -V3_down*f_p1_down
+        H_k[14,16] = -V2_down*f_m1_down 
+        H_k[14,17] = -V1_down*f_0_down
+        H_k[18,20] = -V6_down*f_p1_down 
+        H_k[18,21] = -V8_down*f_m1_down
+        H_k[18,22] =  V7_down*f_0_down
+        H_k[19,20] =  V7_down*f_m1_down 
+        H_k[19,21] =  V8_down*f_0_down
+        H_k[19,22] = -V6_down*f_p1_down 
+        #
+        H_k[1,12]=((np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*(d1**4 + 2*d1**2*dz_dd**2)*self.m.Vdd_pi_inter + (d1**4 + 8*d1**2*dz_dd**2 + 8*dz_dd**4)*self.m.Vdd_delta_inter + 3*d1**4*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[1,13]=(np.sqrt(1.5)*d1**2*((-1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + 1.j*(1.j + np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[1,14]=(d1**4*((1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 + 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/(16.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[1,15]=0
+        H_k[1,16]=0
+        H_k[1,17]=0
+        H_k[1,18]=(d1*dz_dd*((1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 + 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (3*d1**2 + 4*dz_dd**2)*self.m.Vdd_delta_inter - 3*d1**2*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[1,19]=(d1**3*dz_dd*(np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[1,20]=0
+        H_k[1,21]=0
+        H_k[1,22]=0
+        H_k[2,12]=(np.sqrt(1.5)*d1**2*(1.j*(1.j + np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (-1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[2,13]=((np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(12*d1**2*dz_dd**2*self.m.Vdd_pi_inter + 3*d1**4*self.m.Vdd_delta_inter + (d1**2 - 2*dz_dd**2)**2*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[2,14]=(np.sqrt(1.5)*d1**2*((-1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + 1.j*(1.j + np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[2,15]=0
+        H_k[2,16]=(dz_dp*self.m.Vdp_sigma_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[2,17]=0
+        H_k[2,18]=(np.sqrt(1.5)*d1*dz_dd*((-1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + 1.j*(1.j + np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(2*(d1 - dz_dd)*(d1 + dz_dd)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[2,19]=(np.sqrt(1.5)*d1*dz_dd*((1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 + 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(2*(d1 - dz_dd)*(d1 + dz_dd)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[2,20]=0
+        H_k[2,21]=(dz_dp*self.m.Vdp_sigma_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[2,22]=0
+        H_k[3,12]=(d1**4*((1 + 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/(16.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[3,13]=(np.sqrt(1.5)*d1**2*(1.j*(1.j + np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (-1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[3,14]=((np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*(d1**4 + 2*d1**2*dz_dd**2)*self.m.Vdd_pi_inter + (d1**4 + 8*d1**2*dz_dd**2 + 8*dz_dd**4)*self.m.Vdd_delta_inter + 3*d1**4*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[3,15]=0
+        H_k[3,16]=0
+        H_k[3,17]=0
+        H_k[3,18]=-0.25*(d1**3*dz_dd*(np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/((d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[3,19]=(d1*dz_dd*((1 + 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*dz_dd**2*self.m.Vdd_pi_inter - (3*d1**2 + 4*dz_dd**2)*self.m.Vdd_delta_inter + 3*d1**2*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[3,20]=0
+        H_k[3,21]=0
+        H_k[3,22]=0
+        H_k[4,12]=0
+        H_k[4,13]=0
+        H_k[4,14]=0
+        H_k[4,15]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/(4.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[4,16]=(d1*dz_pp*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[4,17]=(d1**2*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[4,18]=-((dz_pd*self.m.Vpd_pi_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2)))
+        H_k[4,19]=0
+        H_k[4,20]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/(4.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[4,21]=(d1*dz_pp*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[4,22]=(d1**2*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,12]=0
+        H_k[5,13]=(dz_pd*self.m.Vpd_sigma_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2))
+        H_k[5,14]=0
+        H_k[5,15]=(d1*dz_pp*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,16]=-0.5*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(d1**2*self.m.Vpp_pi_inter + dz_pp**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,17]=(d1*dz_pp*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,18]=0
+        H_k[5,19]=0
+        H_k[5,20]=(d1*dz_pp*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,21]=-0.5*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(d1**2*self.m.Vpp_pi_inter + dz_pp**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[5,22]=(d1*dz_pp*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,12]=0
+        H_k[6,13]=0
+        H_k[6,14]=0
+        H_k[6,15]=(d1**2*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,16]=(d1*dz_pp*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,17]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/(4.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,18]=0
+        H_k[6,19]=-((dz_pd*self.m.Vpd_pi_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2)))
+        H_k[6,20]=(d1**2*(-1 - 1.j*np.sqrt(3) + 1.j*(1.j + np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,21]=(d1*dz_pp*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[6,22]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/(4.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[7,12]=(d1*dz_dd*((1 + 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(-4*dz_dd**2*self.m.Vdd_pi_inter + (3*d1**2 + 4*dz_dd**2)*self.m.Vdd_delta_inter - 3*d1**2*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[7,13]=(np.sqrt(1.5)*d1*dz_dd*(1.j*(1.j + np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) + 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (-1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(2*(d1 - dz_dd)*(d1 + dz_dd)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[7,14]=-0.25*(d1**3*dz_dd*(np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/((d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[7,15]=(dz_dp*self.m.Vdp_pi_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[7,16]=0
+        H_k[7,17]=0
+        H_k[7,18]=((np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*((d1**4 - d1**2*dz_dd**2 + 2*dz_dd**4)*self.m.Vdd_pi_inter + d1**2*((d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter + 3*dz_dd**2*self.m.Vdd_sigma_inter)))/(2.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[7,19]=(d1**2*((1 + 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*((d1**2 - 3*dz_dd**2)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter + 3*dz_dd**2*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[7,20]=(dz_dp*self.m.Vdp_pi_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[7,21]=0
+        H_k[7,22]=0
+        H_k[8,12]=(d1**3*dz_dd*(np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*self.m.Vdd_pi_inter - self.m.Vdd_delta_inter - 3*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[8,13]=(np.sqrt(1.5)*d1*dz_dd*((1 + 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 - 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(2*(d1 - dz_dd)*(d1 + dz_dd)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter - (d1**2 - 2*dz_dd**2)*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[8,14]=(d1*dz_dd*((1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 + 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*(4*dz_dd**2*self.m.Vdd_pi_inter - (3*d1**2 + 4*dz_dd**2)*self.m.Vdd_delta_inter + 3*d1**2*self.m.Vdd_sigma_inter))/(8.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[8,15]=0
+        H_k[8,16]=0
+        H_k[8,17]=(dz_dp*self.m.Vdp_pi_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[8,18]=(d1**2*((1 - 1.j*np.sqrt(3))*np.exp((3*1.j*d1*kx)/2.) - 2*np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + (1 + 1.j*np.sqrt(3))*np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*((d1**2 - 3*dz_dd**2)*self.m.Vdd_pi_inter - d1**2*self.m.Vdd_delta_inter + 3*dz_dd**2*self.m.Vdd_sigma_inter))/(4.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[8,19]=((np.exp((3*1.j*d1*kx)/2.) + np.exp((1.j*np.sqrt(3)*d1*ky)/2.) + np.exp((1.j*d1*(3*kx + 2*np.sqrt(3)*ky))/2.))*((d1**4 - d1**2*dz_dd**2 + 2*dz_dd**4)*self.m.Vdd_pi_inter + d1**2*((d1**2 + 2*dz_dd**2)*self.m.Vdd_delta_inter + 3*dz_dd**2*self.m.Vdd_sigma_inter)))/(2.*(d1**2 + dz_dd**2)**2*np.exp((1.j*d1*(2*kx + np.sqrt(3)*ky))/2.))
+        H_k[8,20]=0
+        H_k[8,21]=0
+        H_k[8,22]=(dz_dp*self.m.Vdp_pi_inter)/(np.sqrt(2)*np.sqrt(dz_dp**2))
+        H_k[9,12]=0
+        H_k[9,13]=0
+        H_k[9,14]=0
+        H_k[9,15]=-0.25*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[9,16]=(d1*dz_pp*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[9,17]=(d1**2*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[9,18]=(dz_pd*self.m.Vpd_pi_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2))
+        H_k[9,19]=0
+        H_k[9,20]=-0.25*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[9,21]=(d1*dz_pp*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[9,22]=(d1**2*(1 - 1.j*np.sqrt(3) + (1 + 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,12]=0
+        H_k[10,13]=-((dz_pd*self.m.Vpd_sigma_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2)))
+        H_k[10,14]=0
+        H_k[10,15]=(d1*dz_pp*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,16]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(d1**2*self.m.Vpp_pi_inter + dz_pp**2*self.m.Vpp_sigma_inter))/(2.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,17]=(d1*dz_pp*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,18]=0
+        H_k[10,19]=0
+        H_k[10,20]=(d1*dz_pp*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,21]=((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(d1**2*self.m.Vpp_pi_inter + dz_pp**2*self.m.Vpp_sigma_inter))/(2.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[10,22]=(d1*dz_pp*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,12]=0
+        H_k[11,13]=0
+        H_k[11,14]=0
+        H_k[11,15]=(d1**2*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,16]=(d1*dz_pp*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,17]=-0.25*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,18]=0
+        H_k[11,19]=(dz_pd*self.m.Vpd_pi_inter)/(np.sqrt(2)*np.sqrt(dz_pd**2))
+        H_k[11,20]=(d1**2*(1 + 1.j*np.sqrt(3) + (1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) - 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(8.*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,21]=(d1*dz_pp*(-1 + 1.j*np.sqrt(3) + (-1 - 1.j*np.sqrt(3))*np.exp(1.j*np.sqrt(3)*d1*ky) + 2*np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*(self.m.Vpp_pi_inter - self.m.Vpp_sigma_inter))/(4.*np.sqrt(2)*(d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        H_k[11,22]=-0.25*((1 + np.exp(1.j*np.sqrt(3)*d1*ky) + np.exp((1.j*d1*(3*kx + np.sqrt(3)*ky))/2.))*((d1**2 + 2*dz_pp**2)*self.m.Vpp_pi_inter + d1**2*self.m.Vpp_sigma_inter))/((d1**2 + dz_pp**2)*np.exp((1.j*d1*(kx + np.sqrt(3)*ky))/2.))
+        # ------------------------------------------------
+        # SOC
+        H_k[23:45,23:45] = H_k[1:23,1:23]
+        # spin1
+        # even_up
+        H_k[1,1]               = H_k[1,1]               + (-1.0)*self.m.lambda_M_up
+        H_k[2,2]               = H_k[2,2]               +   0.0
+        H_k[3,3]               = H_k[3,3]               + ( 1.0)*self.m.lambda_M_up
+        H_k[4,4]               = H_k[4,4]               + (-1.0/2.0)*self.m.lambda_X2_up
+        H_k[5,5]               = H_k[5,5]               +   0.0
+        H_k[6,6]               = H_k[6,6]               + ( 1.0/2.0)*self.m.lambda_X2_up
+        # odd_up
+        H_k[7,7]               = H_k[7,7]               + (-1.0/2.0)*self.m.lambda_M_up
+        H_k[8,8]               = H_k[8,8]               + ( 1.0/2.0)*self.m.lambda_M_up
+        H_k[9,9]               = H_k[9,9]               + (-1.0/2.0)*self.m.lambda_X2_up
+        H_k[10,10]             = H_k[10,10]             +  0.0
+        H_k[11,11]             = H_k[11,11]             + (1.0/2.0)*self.m.lambda_X2_up            
+        # even_down
+        H_k[1+11,1+11]         = H_k[1+11,1+11]         + (-1.0)*self.m.lambda_M_down
+        H_k[2+11,2+11]         = H_k[2+11,2+11]         +   0.0
+        H_k[3+11,3+11]         = H_k[3+11,3+11]         + ( 1.0)*self.m.lambda_M_down
+        H_k[4+11,4+11]         = H_k[4+11,4+11]         + (-1.0/2.0)*self.m.lambda_X2_down
+        H_k[5+11,5+11]         = H_k[5+11,5+11]         +   0.0
+        H_k[6+11,6+11]         = H_k[6+11,6+11]         + ( 1.0/2.0)*self.m.lambda_X2_down
+        # odd_down
+        H_k[7+11,7+11]         = H_k[7+11,7+11]         + (-1.0/2.0)*self.m.lambda_M_down
+        H_k[8+11,8+11]         = H_k[8+11,8+11]         + ( 1.0/2.0)*self.m.lambda_M_down
+        H_k[9+11,9+11]         = H_k[9+11,9+11]         + (-1.0/2.0)*self.m.lambda_X2_down
+        H_k[10+11,10+11]       = H_k[10+11,10+11]       +   0.0
+        H_k[11+11,11+11]       = H_k[11+11,11+11]       + ( 1.0/2.0)*self.m.lambda_X2_down
+        # spin2
+        # even_up            
+        H_k[1+22,1+22]         = H_k[1+22,1+22]         - (-1.0)*self.m.lambda_M_up
+        H_k[2+22,2+22]         = H_k[2+22,2+22]         -   0.0
+        H_k[3+22,3+22]         = H_k[3+22,3+22]         - ( 1.0)*self.m.lambda_M_up
+        H_k[4+22,4+22]         = H_k[4+22,4+22]         - (-1.0/2.0)*self.m.lambda_X2_up
+        H_k[5+22,5+22]         = H_k[5+22,5+22]         -   0.0
+        H_k[6+22,6+22]         = H_k[6+22,6+22]         - ( 1.0/2.0)*self.m.lambda_X2_up
+        # odd_up
+        H_k[7+22,7+22]         = H_k[7+22,7+22]         - (-1.0/2.0)*self.m.lambda_M_up
+        H_k[8+22,8+22]         = H_k[8+22,8+22]         - ( 1.0/2.0)*self.m.lambda_M_up
+        H_k[9+22,9+22]         = H_k[9+22,9+22]         - (-1.0/2.0)*self.m.lambda_X2_up
+        H_k[10+22,10+22]       = H_k[10+22,10+22]       -  0.0
+        H_k[11+22,11+22]       = H_k[11+22,11+22]       - (1.0/2.0)*self.m.lambda_X2_up            
+        # even_down
+        H_k[1+11+22,1+11+22]   = H_k[1+11+22,1+11+22]   - (-1.0)*self.m.lambda_M_down
+        H_k[2+11+22,2+11+22]   = H_k[2+11+22,2+11+22]   -   0.0
+        H_k[3+11+22,3+11+22]   = H_k[3+11+22,3+11+22]   - ( 1.0)*self.m.lambda_M_down
+        H_k[4+11+22,4+11+22]   = H_k[4+11+22,4+11+22]   - (-1.0/2.0)*self.m.lambda_X2_down
+        H_k[5+11+22,5+11+22]   = H_k[5+11+22,5+11+22]   -   0.0
+        H_k[6+11+22,6+11+22]   = H_k[6+11+22,6+11+22]   - ( 1.0/2.0)*self.m.lambda_X2_down
+        # odd_down
+        H_k[7+11+22,7+11+22]   = H_k[7+11+22,7+11+22]   - (-1.0/2.0)*self.m.lambda_M_down
+        H_k[8+11+22,8+11+22]   = H_k[8+11+22,8+11+22]   - ( 1.0/2.0)*self.m.lambda_M_down
+        H_k[9+11+22,9+11+22]   = H_k[9+11+22,9+11+22]   - (-1.0/2.0)*self.m.lambda_X2_down
+        H_k[10+11+22,10+11+22] = H_k[10+11+22,10+11+22] -  0.0
+        H_k[11+11+22,11+11+22] = H_k[11+11+22,11+11+22] - (1.0/2.0)*self.m.lambda_X2_down  
+        # even-odd spin mixing
+        # layer up
+        H_k[1,7+22]  = self.m.lambda_M_up                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_up 
+        H_k[2,8+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up  # fixed typo: self.m.lambda_M_up
+        H_k[4,10+22] = self.m.lambda_X2_up/np.sqrt(2.0)
+        H_k[5,11+22] = self.m.lambda_X2_up/np.sqrt(2.0)
+        H_k[7,2+22]  = np.sqrt(3.0/2.0)*self.m.lambda_M_up  # fixed typo: self.m.lambda_M_up
+        H_k[8,3+22]  = self.m.lambda_M_up                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_up
+        H_k[9,5+22]  = self.m.lambda_X2_up/np.sqrt(2.0)
+        H_k[10,6+22] = self.m.lambda_X2_up/np.sqrt(2.0)
+        # layer down; AB stacking
+        H_k[1+11,7+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down, fixed index
+        H_k[2+11,8+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down, fixed index
+        H_k[4+11,10+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
+        H_k[5+11,11+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
+        H_k[7+11,2+22+11]  = np.sqrt(3.0/2.0)*self.m.lambda_M_down  # fixed typo: self.m.lambda_M_down, fixed index
+        H_k[8+11,3+22+11]  = self.m.lambda_M_down                   # fixed typo: np.sqrt(3.0/2.0)*self.m.lambda_M_down, fixed index
+        H_k[9+11,5+22+11]  = self.m.lambda_X2_down/np.sqrt(2.0)
+        H_k[10+11,6+22+11] = self.m.lambda_X2_down/np.sqrt(2.0)
         # E-field
         Vm = self.m.fel*self.m.d0/2.*au.Ehh  # self.m.fel is in Eh/aB, d0 in in aB => Vm is in eV
         Vt = self.m.fel*(self.m.d0/2.+self.m.d2_up)*au.Ehh # MB change 27Oct2024
@@ -923,7 +1295,7 @@ class EigenSolver:
         self.model = model
 
     def solve_k(self, k, get_spin=False, get_vec=False):
-        hamiltonian = self.model.build_tb_hamiltonian_new(k[0],k[1])
+        hamiltonian = self.model.build_tb_hamiltonian_new_(k[0],k[1])
         if get_spin is False:
             if get_vec:
                 return eigh(hamiltonian, eigvals_only=False)

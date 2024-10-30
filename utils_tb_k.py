@@ -574,7 +574,7 @@ class Planewaves:
         self.subspaces_total_size = total_size
 
     def build_plane_hamiltonian(self, kx, ky):
-        return self.model.build_tb_hamiltonian_new(kx,ky)
+        return self.model.build_tb_hamiltonian_new_(kx,ky)
 
     def build_basis(self, no_of_bands=[14,15], energy_offset=0.):
         self.no_of_bands = no_of_bands
@@ -1066,8 +1066,8 @@ class FlakeMethods:
             states = np.zeros((no_of_eigenstates, self.flake.no_of_nodes*self.m.dim), dtype=np.complex128)   
         #
         # fast fix to have spin values reasonable:
-        k1 = 0  #k1 = self.basis_k.subspaces[0].shape[0]*dim_r  # K-valley range
-        k2 = len(eigenvectors[:,0])  #k2 = k1 + self.basis_k.subspaces[1].shape[0]*dim_r  # K'-valley range
+        #k1 = self.basis_k.subspaces[0].shape[0]*dim_r  # K-valley range
+        #k2 = k1 + self.basis_k.subspaces[1].shape[0]*dim_r  # K'-valley range
         for i in range(no_of_eigenstates):
             j = 0
             jj= 0
@@ -1076,22 +1076,27 @@ class FlakeMethods:
             for [x,y,z], type in zip(self.flake.nodes[::every_n], self.flake.nodestype[::every_n]):
                 exp_k = np.repeat(np.exp(1.j*(nodes_k[:,0]*x+nodes_k[:,1]*y)), dim_r)
                 if calculate_spin_valley:
-                    expAB_Ku = np.matmul(np.multiply(exp_k[0:k1], eigenvectors[0:k1,i]), self.basis_k.basis_amplitudes[0:k1])
-                    expAB_Kd = np.matmul(np.multiply(exp_k[k1:k2+1], eigenvectors[k1:k2+1,i]), self.basis_k.basis_amplitudes[k1:k2+1])
-                    if type == 1:
-                        SKuu = np.sum(expAB_Ku[np.r_[0:22]])
-                        SKud = np.sum(expAB_Kd[np.r_[0:22]])
-                        SKdu = np.sum(expAB_Ku[np.r_[22:44]])
-                        SKdd = np.sum(expAB_Kd[np.r_[22:44]])
-                    else:
-                        SKuu = np.sum(expAB_Ku[np.r_[0:22]])
-                        SKud = np.sum(expAB_Kd[np.r_[0:22]])
-                        SKdu = np.sum(expAB_Ku[np.r_[22:44]])
-                        SKdd = np.sum(expAB_Kd[np.r_[22:44]])
-                    densities[i,j] = abs2(SKuu)+abs2(SKud)+abs2(SKdu)+abs2(SKdd)
-                    #densities[i,j] = abs2(SKuu+SKud+SKdu+SKdd)  # equivalent to abs2(z) from below
-                    S += abs2(SKuu)+abs2(SKud)-abs2(SKdu)-abs2(SKdd)
-                    K += abs2(SKuu)-abs2(SKud)+abs2(SKdu)-abs2(SKdd)
+                    #expAB_Ku = np.matmul(np.multiply(exp_k[0:k1], eigenvectors[0:k1,i]), self.basis_k.basis_amplitudes[0:k1])
+                    #expAB_Kd = np.matmul(np.multiply(exp_k[k1:k2+1], eigenvectors[k1:k2+1,i]), self.basis_k.basis_amplitudes[k1:k2+1])
+                    # if type == 1:
+                    #     SKuu = np.sum(expAB_Ku[np.r_[0:22]])
+                    #     SKud = np.sum(expAB_Kd[np.r_[0:22]])
+                    #     SKdu = np.sum(expAB_Ku[np.r_[22:44]])
+                    #     SKdd = np.sum(expAB_Kd[np.r_[22:44]])
+                    # else:
+                    #     SKuu = np.sum(expAB_Ku[np.r_[0:22]])
+                    #     SKud = np.sum(expAB_Kd[np.r_[0:22]])
+                    #     SKdu = np.sum(expAB_Ku[np.r_[22:44]])
+                    #     SKdd = np.sum(expAB_Kd[np.r_[22:44]])
+                    # densities[i,j] = abs2(SKuu)+abs2(SKud)+abs2(SKdu)+abs2(SKdd)
+                    # S += abs2(SKuu)+abs2(SKud)-abs2(SKdu)-abs2(SKdd)
+                    # K += abs2(SKuu)-abs2(SKud)+abs2(SKdu)-abs2(SKdd)
+                    expAB_K = np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)
+                    Su = np.sum(expAB_K[np.r_[0:22]])
+                    Sd = np.sum(expAB_K[np.r_[22:44]])
+                    densities[i,j] = abs2(Su)+abs2(Sd)
+                    S += abs2(Su)-abs2(Sd)
+                    K -= abs2(Su)-abs2(Sd)
                 else:
                     expAB = np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)
                     if type == 1:
