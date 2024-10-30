@@ -1091,12 +1091,7 @@ class FlakeMethods:
                     # densities[i,j] = abs2(SKuu)+abs2(SKud)+abs2(SKdu)+abs2(SKdd)
                     # S += abs2(SKuu)+abs2(SKud)-abs2(SKdu)-abs2(SKdd)
                     # K += abs2(SKuu)-abs2(SKud)+abs2(SKdu)-abs2(SKdd)
-                    expAB_K = np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)
-                    Su = np.sum(expAB_K[np.r_[0:22]])
-                    Sd = np.sum(expAB_K[np.r_[22:44]])
-                    densities[i,j] = abs2(Su)+abs2(Sd)
-                    S += abs2(Su)-abs2(Sd)
-                    K -= abs2(Su)-abs2(Sd)
+                    densities[i,j] = abs2(np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)).sum()
                 else:
                     expAB = np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)
                     if type == 1:
@@ -1108,6 +1103,9 @@ class FlakeMethods:
                     states[i,jj:jj+self.m.dim] = np.matmul(np.multiply(exp_k, eigenvectors[:,i]), self.basis_k.basis_amplitudes)
                 j += every_n
                 jj += every_n*self.m.dim
+            Su = np.matmul(abs2(eigenvectors[:,i]), abs2(self.basis_k.basis_amplitudes[:,:22])).sum()
+            Sd = np.matmul(abs2(eigenvectors[:,i]), abs2(self.basis_k.basis_amplitudes[:,22:])).sum()
+            S = Su-Sd
             if calculate_spin_valley:
                 spin_valley[i] = [S,K]
                 k_max[i] = nodes_kk[np.argmax(abs2(eigenvectors[:,i]))]
@@ -1118,7 +1116,7 @@ class FlakeMethods:
         self.densities = densities/(self.flake.no_of_nodes/2)
         self.spin_valley = spin_valley
         if calculate_spin_valley:
-            self.spin_valley = spin_valley/(self.flake.no_of_nodes/2)
+            self.spin_valley = spin_valley  #/(self.flake.no_of_nodes/2)
         if calculate_real_states:
             states = states/np.sqrt(self.flake.no_of_nodes)
         self.k_max = k_max
