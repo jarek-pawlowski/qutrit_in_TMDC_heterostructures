@@ -927,9 +927,9 @@ class BandModel:
         d_down        = np.sqrt(d1**2.0+d2_down**2.0) 
         layer_dist    = self.m.d0 * au.Ah*10.  # to be in A
         dz_pp         = layer_dist - d2_up - d2_down
-        d_pp          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_pp**2.0) ) 
+        d_pp          = np.sqrt( (lattice_const_in_A**2.0 / 3.0) + (dz_pp**2.0) ) 
         dz_dd         = layer_dist
-        d_dd          = np.sqrt( (self.m.lattice_const**2.0 / 3.0) + (dz_dd**2.0) ) 
+        d_dd          = np.sqrt( (lattice_const_in_A**2.0 / 3.0) + (dz_dd**2.0) )
         dz_dp         = layer_dist - d2_down
         dz_pd         = layer_dist - d2_up
         R1x_pp        = -d1/2.0 
