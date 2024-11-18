@@ -95,7 +95,8 @@ flake.create_reciprocal_lattice()
 print("constructing plane-wave basis...")
 basis_k = utils.Planewaves(flake, model)
 #basis_k.select_subspace(flake.K_points, 1.5)
-basis_k.select_subspace(flake.Q_points, 1.5)  # 14.
+#basis_k.select_subspace(flake.Q_points, 1.5)  # 14.
+basis_k.select_subspace(flake.KQ_points, 1.5)  # 14.
 #basis_k.select_subspace_half()
 plot_flake.plot_flake_lattice_k(subsets=basis_k.subspaces)
 

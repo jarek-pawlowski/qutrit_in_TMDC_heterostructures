@@ -414,6 +414,7 @@ class Flake:
         self.lattice_vectors = self.l.lattice_vectors*self.lattice_constant
         self.K_points = [p/self.lattice_constant for p in self.l.K_points]
         self.Q_points = [p/self.lattice_constant for p in self.l.Q_points]
+        self.KQ_points = self.K_points + self.Q_points
         #self.G_points = [p/self.lattice_constant for p in self.l.G_points]
         #self.hoppingsMM = [h*self.lattice_constant/np.sqrt(3.) for h in self.l.hoppingsMM]
         #self.hoppingsMX = [h*self.lattice_constant/np.sqrt(3.) for h in self.l.hoppingsMX]
