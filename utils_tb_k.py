@@ -678,6 +678,20 @@ class Planewaves:
         e_du = np.sum(elements[indices_down, 0::2], axis=0)
         e_dd = np.sum(elements[indices_down, 1::2], axis=0)
         return [e_uu, e_ud, e_du, e_dd]
+    
+    def sum_elements_with_eigenstate(self, elements, k_point, radius, eigv):
+        radius *= au.Ah
+        indices_up = np.array([i*2 for i, nk in enumerate(self.basis_k) if (nk[0]-k_point[0])**2+(nk[1]-k_point[1])**2 < radius**2])
+        indices_down = indices_up + 1
+        weights_up = np.conjugate(eigv[indices_up])
+        weights_up /= np.sqrt(abs2(weights_up).sum())
+        weights_down = np.conjugate(eigv[indices_down])
+        weights_down /= np.sqrt(abs2(weights_down).sum())
+        e_uu = elements[indices_up, 0::2].T @ weights_up  # from up to up
+        e_ud = elements[indices_up, 1::2].T @ weights_up  # from up to down, should be zero
+        e_du = elements[indices_down, 0::2].T @ weights_down
+        e_dd = elements[indices_down, 1::2].T @ weights_down
+        return [e_uu, e_ud, e_du, e_dd]
 
 
 class LoadPotential:
@@ -1320,6 +1334,20 @@ class PlottingOnFlake:
         if suffix is not None:
             filename += suffix
         plt.savefig(os.path.join(self.directory, filename+'.png'), bbox_inches='tight', dpi=200)    
+        plt.close()
+        
+    def plot_statedensity_k(self, subsets, density, filename='eigenstate_k.png'):
+        fig, ax = plt.subplots()
+        ax.set_aspect(1.)
+        ax.set_xlabel(r'$k_x$ (nm$^{-1}$)')
+        ax.set_ylabel(r'$k_y$ (nm$^{-1}$)')
+        subset = np.concatenate(subsets)
+        density = abs2(density.reshape(subset.shape[0],-1).sum(axis=1))
+        ax.scatter(x=subset[:,0]/au.Ah, 
+                   y=subset[:,1]/au.Ah, 
+                   c=density*au.Ehh,
+                   s=self.pointsize/2.)
+        plt.savefig(os.path.join(self.directory, filename), bbox_inches='tight', dpi=200)
         plt.close()
 
     def plot_potential_flake(self, potential, filename='potential_flake', suffix=None):

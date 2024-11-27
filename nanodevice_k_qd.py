@@ -65,7 +65,7 @@ material = utils_tb.Newmaterial(lattice_const, d2_up, d2_down, d0,
                     offset)
 
 #material.set_efield(0.)  # in mV/nm
-material.set_efield(1000.)  # in mV/nm
+material.set_efield(100.)  # in mV/nm
 
 k_path = utils_tb.load_k_path('kpointsDFT.dat')
 lattice = utils_tb.Lattice(BZ_path=k_path)
@@ -107,13 +107,20 @@ angle = 0.  # np.pi/2.
 for i, n in enumerate(flake.nodes):
     x = n[0]
     y = n[1]
+    angle = 0.
+    r = x*np.cos(angle) + y*np.sin(angle)  #-10./utils.au.Ah
+    d = np.sqrt(x**2+y**2-r**2)
+    flake.potential[i] = (np.exp(-r**2/(.15/utils.au.Ah)**2/2.)-1.)*50./utils.au.Eh  # type-II barrier amplitude
+    if r > 0: flake.potential[i] += -50./utils.au.Eh
+    angle = np.pi/3.
     r = x*np.cos(angle) + y*np.sin(angle)
     d = np.sqrt(x**2+y**2-r**2)
-    #flake.potential[i] = (np.exp(-r**2/(.15/utils.au.Ah)**2/2.)-1.)*300./utils.au.Eh  # type-II barrier amplitude
+    #flake.potential[i] += (np.exp(-r**2/(.15/utils.au.Ah)**2/2.)-1.)*50./utils.au.Eh  # type-II barrier amplitude  
+    #if r < 0: flake.potential[i] = -50./utils.au.Eh 
     #flake.potential[i] += np.exp(-d**2/(3./utils.au.Ah)**2/2.)*1./utils.au.Eh
     #flake.potential[i] -= (np.exp(-((x-6.8/utils.au.Ah)**2+(y+4.6/utils.au.Ah)**2)/(5./utils.au.Ah)**2/2.)-1.)*250./utils.au.Eh
     #flake.potential[i] = (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*250./utils.au.Eh
-    flake.potential[i] = (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*100./utils.au.Eh
+    flake.potential[i] += (np.exp(-(x**2+y**2)/(5./utils.au.Ah)**2/2.)-1.)*100./utils.au.Eh
 
 # Q1'-Q3 coupling:
 # angle = -np.pi/6.
@@ -139,7 +146,7 @@ flake_solver = utils.FlakeMethods(flake, material, basis_k=basis_k)
 plot_kq = utils.PlottingFourier(flake_solver, directory='results')
 plot_kq.plot_elements_kmq(basis_k.elements_kmq, l_index=0)
 
-"""
+'''
 # build Hamiltonian in plane-waves basis
 print("Calculating coupling elements...")
 dressed_elements = basis_k.build_hamiltonian(include_diagonal=False)
@@ -148,7 +155,7 @@ plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[0], suffix='0', s
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[1], suffix='1')
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[2], suffix='2')
 plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[3], suffix='3')
-"""
+'''
 
 # build Hamiltonian in plane-waves basis
 print("building Hamiltonian...")
@@ -166,6 +173,17 @@ eigenvalues, eigenvectors = es.solve_eigenproblem_arpack_dense(hamiltonian,
 print(eigenvalues[:10]*utils.au.Ehh)
 plot_bands.plot_eigenvalues(eigenvalues)
 np.save('./results/eigenvalues', eigenvalues, allow_pickle=True)
+
+plot_flake.plot_statedensity_k(subsets=basis_k.subspaces, density=eigenvectors[:,2])
+
+# calculate coupling matrix elemets
+print("Calculating coupling elements...")
+dressed_elements = basis_k.build_hamiltonian(include_diagonal=False)
+summed_elements = basis_k.sum_elements_with_eigenstate(dressed_elements, flake.Q_points[4], 1.5, eigenvectors[:,0])
+plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[0], suffix='0', savetofile='Q2_Q3.txt')
+plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[1], suffix='1')
+plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[2], suffix='2')
+plot_kq.plot_dressed_elements(basis_k.basis_k, summed_elements[3], suffix='3')
 
 # evaluate results
 firststates = 20 
